@@ -11,41 +11,27 @@ export const ProductForm = () => {
     const navigate = useNavigate()
     const params = useParams()
     
-    const isEditing = (() => {
-        if (params.id) {
-            return true
-        } else {
-            return false
-        }
-    })()
-
-    const initialId = (() => {
-        if (params.id) {
-            return params.id
-        } else {
-            return ""
-        }
-    })()
-
-    const [id, setId] = useState(initialId)
+    const isEditing = Boolean(params.id)
+    const [id, setId] = useState(params.id || "")
     const [name, setName] = useState("")
     const [price, setPrice] = useState("")
     const [stock, setStock] = useState("")
-    const [loading, setLoading] = useState(false) 
+    const [loading, setLoading] = useState(false)
+    const [errors, setErrors] = useState({})
     
-    const [errors, setErrors] = useState({}) 
+    const [imageFile, setImageFile] = useState(null)
+    const [imagePreview, setImagePreview] = useState(null)
+    const [dragActive, setDragActive] = useState(false)
 
     const authHeaders = {
-        'content-type': "application/json",
         "accept": "application/json",
         'Authorization': user.token 
     }
 
     useEffect(() => {
         const getProduct = async () => {
-            if (!isEditing) {
-                return
-            }
+            if (!isEditing) return
+            
             try {
                 const url = `${import.meta.env.VITE_API_URL}/products/product?id=${params.id}` 
                 const config = { method: "GET", headers: authHeaders }
@@ -58,12 +44,17 @@ export const ProductForm = () => {
                 }
                 
                 setName(res.product.name)
-                setPrice(String(res.product.price)) 
-                setStock(String(res.product.stock)) 
+                setPrice(String(res.product.price))
+                setStock(String(res.product.stock))
+                
+                if (res.product.imageUrl) {
+                    setImagePreview(`${import.meta.env.VITE_API_URL}/uploads/${res.product.imageUrl}`)
+                }
             } catch (err) {
                 toast.error(`Error al cargar producto: ${err.message}`)
             }
         }
+        
         if (user.token && isEditing) {
             getProduct()
         }
@@ -80,7 +71,7 @@ export const ProductForm = () => {
         
         if (isNaN(parsedPrice) || parsedPrice < 0) {
             newErrors.price = "El precio debe ser un número no negativo."
-        } else if (parsedPrice > 1000000) { 
+        } else if (parsedPrice > 1000000) {
             newErrors.price = "El precio es excesivamente alto."
         }
 
@@ -91,24 +82,84 @@ export const ProductForm = () => {
         }
 
         setErrors(newErrors)
-        return Object.keys(newErrors).length === 0 
+        return Object.keys(newErrors).length === 0
     }
-    
+
+    const handleImageChange = (e) => {
+        const file = e.target.files[0]
+        handleFile(file)
+    }
+
+    const handleFile = (file) => {
+        if (!file) return
+
+        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+        if (!validTypes.includes(file.type)) {
+            toast.error('Solo se permiten imágenes (JPG, PNG, GIF, WEBP)')
+            return
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error('La imagen no debe superar los 5MB')
+            return
+        }
+
+        setImageFile(file)
+        
+        const reader = new FileReader()
+        reader.onloadend = () => {
+            setImagePreview(reader.result)
+        }
+        reader.readAsDataURL(file)
+    }
+
+    const handleDrag = (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        if (e.type === "dragenter" || e.type === "dragover") {
+            setDragActive(true)
+        } else if (e.type === "dragleave") {
+            setDragActive(false)
+        }
+    }
+
+    const handleDrop = (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        setDragActive(false)
+        
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            handleFile(e.dataTransfer.files[0])
+        }
+    }
+
     const updateProduct = async () => {
         setLoading(true)
         try {
+            const formData = new FormData()
+            formData.append('name', name)
+            formData.append('price', parseFloat(price))
+            formData.append('stock', parseInt(stock))
+            
+            if (imageFile) {
+                formData.append('image', imageFile)
+            }
+
             const config = {
                 method: "PUT",
-                headers: authHeaders,
-                body: JSON.stringify({ name, price: parseFloat(price), stock: parseInt(stock) }) 
+                headers: { 'Authorization': user.token },
+                body: formData
             }
+            
             const url = `${import.meta.env.VITE_API_URL}/products/?id=${id}`
             const req = await fetch(url, config)
             const res = await req.json()
+            
             if (res.error) {
                 toast.error(res.msg)
                 return
             }
+            
             toast.success(res.msg)
             setTimeout(() => navigate("/private"), 700)
         } catch (er) {
@@ -121,22 +172,36 @@ export const ProductForm = () => {
     const createProduct = async () => {
         setLoading(true)
         try {
+            const formData = new FormData()
+            formData.append('name', name)
+            formData.append('price', parseFloat(price))
+            formData.append('stock', parseInt(stock))
+            
+            if (imageFile) {
+                formData.append('image', imageFile)
+            }
+
             const config = {
                 method: "POST",
-                headers: authHeaders,
-                body: JSON.stringify({ name, price: parseFloat(price), stock: parseInt(stock) })
+                headers: { 'Authorization': user.token },
+                body: formData
             }
+            
             const url = `${import.meta.env.VITE_API_URL}/products`
             const req = await fetch(url, config)
             const res = await req.json()
+            
             if (res.error) {
                 toast.error(res.msg)
                 return
             }
+            
             toast.success(res.msg)
             setName("")
             setPrice("")
             setStock("")
+            setImageFile(null)
+            setImagePreview(null)
         } catch (er) {
             toast.error("Ha ocurrido un error al crear")
         } finally {
@@ -161,41 +226,20 @@ export const ProductForm = () => {
     
     const handleChange = (setter, key) => (e) => {
         setter(e.target.value)
-        
         if (errors[key]) {
-            setTimeout(validateForm, 0) 
+            setTimeout(validateForm, 0)
         }
     }
-
-    const formTitle = (() => {
-        if (isEditing) {
-            return "Editar Producto"
-        } else {
-            return "Cargar Producto"
-        }
-    })()
-
-    const buttonValue = (() => {
-        if (loading) {
-            return "Cargando..."
-        } else if (isEditing) {
-            return "Actualizar"
-        } else {
-            return "Cargar"
-        }
-    })()
 
     return (
         <div className='min-h-[calc(100vh-6rem)] flex flex-col items-center justify-center py-12 px-4'>
             <div className='relative z-10 w-full flex flex-col items-center'>
-
-                <FormHeader title={formTitle} />
+                <FormHeader title={isEditing ? "Editar Producto" : "Cargar Producto"} />
 
                 <form 
                     className="flex flex-col gap-6 bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-md border border-gray-100" 
                     onSubmit={handleSubmit}
                 >
-                    
                     <FormInputWithError
                         type="text"
                         name="Nombre_Producto"
@@ -228,11 +272,67 @@ export const ProductForm = () => {
                         step="1"
                         error={errors.stock}
                     />
+
+                    <div className="flex flex-col gap-2">
+                        <label className="font-semibold text-sm text-gray-700">
+                            Imagen del Producto
+                        </label>
+                        
+                        <div
+                            className={`relative border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+                                dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+                            }`}
+                            onDragEnter={handleDrag}
+                            onDragLeave={handleDrag}
+                            onDragOver={handleDrag}
+                            onDrop={handleDrop}
+                            onClick={() => document.getElementById('imageInput').click()}
+                        >
+                            <input
+                                id="imageInput"
+                                type="file"
+                                accept="image/*"
+                                onChange={handleImageChange}
+                                className="hidden"
+                            />
+                            
+                            {imagePreview ? (
+                                <div className="relative">
+                                    <img 
+                                        src={imagePreview} 
+                                        alt="Preview" 
+                                        className="max-h-48 mx-auto rounded-lg"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            setImageFile(null)
+                                            setImagePreview(null)
+                                        }}
+                                        className="absolute top-2 right-2 bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-red-700"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    <div className="text-4xl">📷</div>
+                                    <p className="text-gray-600">
+                                        Arrastra una imagen aquí o haz clic para seleccionar
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                        JPG, PNG, GIF, WEBP (máx. 5MB)
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                     
                     <div className='mt-6'>
                         <Button 
                             type='submit' 
-                            value={buttonValue}
+                            value={loading ? "Cargando..." : (isEditing ? "Actualizar" : "Cargar")}
                             disabled={loading || Object.keys(errors).length > 0} 
                         />
                     </div>

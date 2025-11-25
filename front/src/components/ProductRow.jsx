@@ -13,7 +13,6 @@ export const ProductRow = ({ data, onDelete }) => {
   const cartItem = cart.find(c => c.id === data.id)
 
   const handleAdd = () => {
-    // prevenir agregar si stock insuficiente
     if (data.stock <= 0) {
       alert('No hay stock disponible')
       return
@@ -22,7 +21,6 @@ export const ProductRow = ({ data, onDelete }) => {
   }
 
   const actionButtons = (() => {
-    // Si estamos en la vista privada (gestión) y es owner/admin -> mostrar editar/borrar
     if (isPrivate && (isOwner || isAdmin)) {
       return (
         <section className='flex gap-2 min-w-[170px] justify-end'>
@@ -43,7 +41,6 @@ export const ProductRow = ({ data, onDelete }) => {
       )
     }
 
-    // Si no estamos en privado (pública) o es cliente -> mostrar agregar al carrito
     return (
       <div className="relative">
         <button

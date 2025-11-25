@@ -26,7 +26,6 @@ const Register = () => {
     const [confirmPassword, setConfirmPassword] = useState("")
     const [loading, setLoading] = useState(false)
 
-    // Validación básica de formato de email
     const validateEmailFormat = (email) => {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
         return emailRegex.test(email)
@@ -35,7 +34,6 @@ const Register = () => {
     const handleSubmit = async (e) => {
         e.preventDefault()
 
-        // Validaciones en el frontend
         if (!fullName.trim()) {
             toast.error("El nombre completo es obligatorio")
             return
@@ -95,14 +93,12 @@ const Register = () => {
             toast.success("✅ " + res.msg)
             toast.info("Ahora puedes iniciar sesión")
             
-            // Limpiar formulario
             setFullName("")
             setEmail("")
             setPassword("")
             setConfirmPassword("")
 
         } catch (e){
-            console.log(e)
             toast.error("Error de conexión con el servidor.")
         }
         finally {

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore'
 import { toast } from 'react-toastify'
+import jsPDF from 'jspdf'
 
 const Checkout = () => {
   const { user, cart, cartTotal, clearCart } = useStore()
@@ -20,6 +21,122 @@ const Checkout = () => {
       navigate('/')
     }
   }, [user, cart, navigate])
+
+  const generatePDF = (paymentMethod, purchaseData) => {
+    const doc = new jsPDF()
+    
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(20)
+    doc.text("INVENTARIO APP", 105, 20, { align: "center" })
+    
+    doc.setFontSize(10)
+    doc.setFont("helvetica", "normal")
+    doc.text("CUIT: 30-12345678-9", 105, 28, { align: "center" })
+    doc.text("Dirección: Av. 1234, Ciudad, País", 105, 33, { align: "center" })
+    doc.text("Tel: +54 123 456-7890", 105, 38, { align: "center" })
+    
+    doc.setLineWidth(0.5)
+    doc.line(20, 42, 190, 42)
+    
+    doc.setFontSize(16)
+    doc.setFont("helvetica", "bold")
+    doc.text("TICKET DE COMPRA", 105, 50, { align: "center" })
+    
+    const orderNumber = `#ORD-${Math.floor(Math.random() * 10000)}`
+    const currentDate = new Date().toLocaleString('es-AR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    })
+    
+    doc.setFontSize(10)
+    doc.setFont("helvetica", "normal")
+    let yPos = 60
+    
+    doc.text(`Número de Orden: ${orderNumber}`, 20, yPos)
+    yPos += 6
+    doc.text(`Fecha y Hora: ${currentDate}`, 20, yPos)
+    yPos += 6
+    doc.text(`Tipo de Comprobante: Ticket`, 20, yPos)
+    yPos += 10
+    
+    doc.setFont("helvetica", "bold")
+    doc.text("DATOS DEL CLIENTE", 20, yPos)
+    yPos += 6
+    doc.setFont("helvetica", "normal")
+    doc.text(`Nombre: ${user.full_name}`, 20, yPos)
+    yPos += 6
+    doc.text(`Email: ${user.email}`, 20, yPos)
+    yPos += 6
+    doc.text(`Condición Fiscal: Consumidor Final`, 20, yPos)
+    yPos += 10
+    
+    doc.line(20, yPos, 190, yPos)
+    yPos += 6
+    
+    doc.setFont("helvetica", "bold")
+    doc.text("DETALLE DE LA COMPRA", 20, yPos)
+    yPos += 8
+    
+    doc.setFontSize(9)
+    doc.text("Cant.", 20, yPos)
+    doc.text("Descripción", 40, yPos)
+    doc.text("P. Unit.", 120, yPos)
+    doc.text("Subtotal", 160, yPos)
+    yPos += 4
+    doc.line(20, yPos, 190, yPos)
+    yPos += 6
+    
+    doc.setFont("helvetica", "normal")
+    purchaseData.items.forEach(item => {
+      doc.text(String(item.qty), 20, yPos)
+      doc.text(item.name.substring(0, 40), 40, yPos)
+      doc.text(`$${Number(item.price).toFixed(2)}`, 120, yPos)
+      doc.text(`$${(item.qty * item.price).toFixed(2)}`, 160, yPos)
+      yPos += 6
+    })
+    
+    yPos += 2
+    doc.line(20, yPos, 190, yPos)
+    yPos += 8
+    
+    doc.setFontSize(10)
+    doc.setFont("helvetica", "normal")
+    const subtotal = purchaseData.total
+    doc.text(`Subtotal:`, 130, yPos)
+    doc.text(`$${subtotal.toFixed(2)}`, 160, yPos)
+    yPos += 6
+    
+    doc.text(`Descuentos:`, 130, yPos)
+    doc.text(`$0.00`, 160, yPos)
+    yPos += 8
+    
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(12)
+    doc.text(`TOTAL  :`, 130, yPos)
+    doc.text(`$${purchaseData.total.toFixed(2)}`, 160, yPos)
+    yPos += 10
+    
+    doc.setFontSize(10)
+    doc.setFont("helvetica", "normal")
+    doc.text(`Medio de Pago: ${paymentMethod}`, 20, yPos)
+    yPos += 6
+    
+    
+    doc.line(20, yPos, 190, yPos)
+    yPos += 8
+    
+    doc.setFontSize(9)
+    doc.setFont("helvetica", "italic")
+    doc.text("¡Gracias por su compra!", 105, yPos, { align: "center" })
+    yPos += 5
+    doc.text("Sistema de Gestión de Inventario - Inventario APP", 105, yPos, { align: "center" })
+    
+    doc.save(`Ticket_${orderNumber}_${Date.now()}.pdf`)
+  }
 
   const handlePayment = async (method) => {
     if (processing) return
@@ -51,17 +168,31 @@ const Checkout = () => {
         return
       }
 
-      toast.success(`✅ Simulación de compra realizada con ${method}`)
-      toast.info(`Stock actualizado correctamente`)
+      toast.success(`✅ Compra realizada con ${method}`)
+
+      const purchaseData = {
+        items: cart,
+        total: total,
+        paymentMethod: method,
+        date: new Date().toISOString()
+      }
+
+      const downloadTicket = window.confirm(
+        `Compra realizada exitosamente.\n\n¿Desea descargar el ticket de compra en PDF?`
+      )
+
+      if (downloadTicket) {
+        generatePDF(method, purchaseData)
+        toast.info("📥 Descargando ticket...")
+      }
 
       clearCart()
       
       setTimeout(() => {
-        navigate('/')
+        navigate('/private')
       }, 1500)
 
     } catch (err) {
-      console.error('Error en checkout:', err)
       toast.error('Error de conexión al procesar la compra')
       setProcessing(false)
     }
@@ -72,11 +203,7 @@ const Checkout = () => {
   }
 
   return (
-    <div
-    className='min-h-screen bg-cover bg-center relative'
-      style={{ backgroundImage: "url('/deposito.jpg')" }} 
-    >
-    <div className="min-h-[calc(100vh-80px)] flex items-center justify-center p-6">
+    <div className="container mx-auto min-h-[calc(100vh-80px)] flex items-center justify-center p-6">
       <div className="w-full max-w-xl bg-white shadow-xl rounded-lg p-6">
         <h2 className="text-3xl font-bold mb-6 text-center">Medios de Pago</h2>
 
@@ -128,7 +255,6 @@ const Checkout = () => {
           ← Volver al carrito
         </button>
       </div>
-    </div>
     </div>
   )
 }

@@ -23,7 +23,11 @@ export const HistoryPanel = ({ data }) => {
                 <ul className="space-y-3">
                     {recentData.map((d) => {
                         const isNew = new Date(d.createdAt).getTime() === new Date(d.updatedAt).getTime()
+
                         const creatorName = d.creator?.fullName || 'N/A'
+                        const updaterName = d.updater?.fullName || 'N/A'
+
+                        const displayName = isNew ? creatorName : updaterName
 
                         return (
                             <li
@@ -41,7 +45,7 @@ export const HistoryPanel = ({ data }) => {
                                 </p>
 
                                 <p className="text-xs text-gray-600 mt-1">
-                                    Por: <span className="font-medium text-slate-900">{creatorName}</span>
+                                    {isNew ? 'Creado' : 'Modificado'} por: <span className="font-medium text-slate-900">{displayName}</span>
                                 </p>
 
                                 <p className="text-xs text-gray-500 mt-1">

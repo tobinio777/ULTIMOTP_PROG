@@ -9,6 +9,7 @@ import { ToastContainer } from "react-toastify"
 import Navbar from './components/Navbar'
 import CartPage from './components/CartPage'
 import Checkout from './components/Checkout'
+import TicketPurchase from './components/TicketPurchase'
 
 const App = () => {
   return (
@@ -37,9 +38,10 @@ const App = () => {
               <Route path="product/edit/:id" element={<ProductForm />} />
             </Route>
 
-            {/* Cart & Checkout */}
+            {/* Cart, Checkout & Ticket */}
             <Route path="/cart" element={<CartPage />} />
             <Route path="/checkout" element={<Checkout />} />
+            <Route path="/ticket" element={<TicketPurchase />} />
 
             <Route path="*" element={<h1 className="text-white text-center text-3xl mt-20">404 - Página no encontrada</h1>} />
           </Routes>

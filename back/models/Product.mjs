@@ -37,9 +37,22 @@ Product.init(
         }
       }
     },
+    imageUrl: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null
+    },
     userId: {
       type: DataTypes.INTEGER,
       allowNull: true, 
+      references: {
+        model: 'users',
+        key: 'id'
+      }
+    },
+    lastUpdatedBy: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
       references: {
         model: 'users',
         key: 'id'
@@ -55,3 +68,6 @@ Product.init(
 
 Product.belongsTo(User, { foreignKey: 'userId', as: 'creator' })
 User.hasMany(Product, { foreignKey: 'userId', as: 'products' })
+
+Product.belongsTo(User, { foreignKey: 'lastUpdatedBy', as: 'updater' })
+User.hasMany(Product, { foreignKey: 'lastUpdatedBy', as: 'updatedProducts' })

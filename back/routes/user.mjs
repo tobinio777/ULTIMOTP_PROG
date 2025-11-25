@@ -5,33 +5,48 @@ import jwt from 'jsonwebtoken'
 
 export const routes = Router()
 
-// Función para validar formato de email
 const validateEmailFormat = (email) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   return emailRegex.test(email)
 }
 
-// Función para verificar si el email existe (usando API gratuita)
 const verifyEmailExists = async (email) => {
+  const apiKey =  process.env.EMAIL_API_KEY
+
+  if (!apiKey) {
+    return { valid: true, message: "Verificación omitida (config)" }
+  }
+
   try {
-    // Usamos la API gratuita de EmailValidation
-    const response = await fetch(`https://api.emailvalidation.io/v1/info?apikey=ema_live_YOUR_API_KEY&email=${email}`)
+    const response = await fetch(`https://api.emailvalidation.io/v1/info?apikey=${apiKey}&email=${email}`)
     const data = await response.json()
     
-    // Si la API no está configurada o falla, permitir el registro
     if (!response.ok) {
-      console.log("API de verificación no disponible, permitiendo registro")
       return { valid: true, message: "Verificación de email no disponible" }
     }
     
-    // Verificar si el email es válido según la API
-    return {
-      valid: data.format_valid && data.smtp_check !== false,
-      message: data.format_valid ? "Email válido" : "Formato de email inválido"
+    if (!data.format_valid) {
+        return { valid: false, message: "El formato del email no es válido." }
     }
+
+    if (data.disposable) {
+        return { valid: false, message: "No se permiten correos temporales." }
+    }
+
+    if (!data.mx_found) {
+        return { valid: false, message: "El dominio del correo no es válido (No recibe emails)." }
+    }
+
+    if (data.smtp_check === false || data.state === 'undeliverable') {
+        return { valid: false, message: "La dirección de correo no existe." }
+    }
+    
+    return {
+      valid: true,
+      message: "Email válido"
+    }
+
   } catch (error) {
-    console.error("Error verificando email:", error)
-    // Si hay error en la verificación, permitir el registro
     return { valid: true, message: "Error en verificación, permitiendo registro" }
   }
 }
@@ -41,7 +56,6 @@ routes.post("/", async (req, res) => {
   try {
     const { fullName, email, password, confirmPassword, role } = body
     
-    // Validar que las contraseñas coincidan
     if (password !== confirmPassword) {
       res.status(403).json({
         error: true,
@@ -50,7 +64,6 @@ routes.post("/", async (req, res) => {
       return
     }
 
-    // Validar formato de email
     if (!validateEmailFormat(email)) {
       res.status(400).json({
         error: true,
@@ -59,8 +72,6 @@ routes.post("/", async (req, res) => {
       return
     }
 
-    // Verificar si el email existe (comentado por ahora, descomentar cuando tengas API key)
-    /*
     const emailVerification = await verifyEmailExists(email)
     if (!emailVerification.valid) {
       res.status(400).json({
@@ -69,7 +80,7 @@ routes.post("/", async (req, res) => {
       })
       return
     }
-    */
+    
 
     const salt = await bcrypt.genSalt(10)
     const hash = await bcrypt.hash(password, salt)
@@ -89,7 +100,6 @@ routes.post("/", async (req, res) => {
     })
 
   } catch (err) {
-    // Manejar error de email duplicado
     if (err.name === 'SequelizeUniqueConstraintError') {
       res.status(400).json({
         error: true,
@@ -153,7 +163,6 @@ routes.post("/login", async (req, res) => {
       }
     })
   } catch(e) {
-    console.log(e)
     res.status(500).json({
       error: true,
       msg: "Hubo un error al iniciar sesion"

@@ -19,7 +19,6 @@ const Navbar = () => {
         </Link>
 
         <div className="flex items-center gap-6">
-          {/* Si user existe y no es admin -> mostrar Carrito */}
           {user?.role !== 'admin' && (
             <Link to="/cart" className="relative inline-block">
               <button className="py-2 px-4 text-sm font-bold rounded-lg shadow-md transition-all text-white bg-linear-to-r from-slate-700 to-slate-900 hover:from-slate-800 hover:to-slate-950">
@@ -33,7 +32,6 @@ const Navbar = () => {
             </Link>
           )}
 
-          {/* Si no hay usuario -> link a login */}
           {!user?.token ? (
             <Link to="/login" className="py-2 px-4 text-sm font-bold rounded-lg shadow-md transition-all text-white bg-indigo-600 hover:bg-indigo-700">
               Iniciar Sesión
@@ -58,5 +56,4 @@ const Navbar = () => {
 }
 
 export default Navbar
-
 

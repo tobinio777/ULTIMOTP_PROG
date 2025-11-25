@@ -3,41 +3,28 @@ import { persist } from 'zustand/middleware'
 
 export const useStore = create(persist(
   (set, get) => ({
-    // Usuario
     user: {
       id: null,
       email: null,
       full_name: null,
       token: null,
-      role: 'cliente' // rol por defecto
+      role: 'cliente'
     },
 
-    // Productos cache (opcional)
     products: [],
 
-    // Carrito: array de { id, name, price, stock, qty, ... }
     cart: [],
 
-    // -------------------------
-    // User actions
-    // -------------------------
     setUser: (newuser) => set({ user: newuser }),
 
     logout: () => set({ user: { id: null, email: null, full_name: null, token: null, role: 'cliente' }, cart: [] }),
 
-    // -------------------------
-    // Products
-    // -------------------------
     setProducts: (products) => set({ products }),
 
-    // -------------------------
-    // Carrito
-    // -------------------------
     addToCart: (product) => {
       const cart = get().cart.slice()
       const found = cart.find(p => p.id === product.id)
       if (found) {
-        // asegúrate que no supere el stock
         if ((found.qty + 1) <= product.stock) {
           found.qty += 1
           set({ cart })
@@ -55,7 +42,6 @@ export const useStore = create(persist(
       const cart = get().cart.slice()
       const found = cart.find(p => p.id === id)
       if (!found) return
-      // no dejar qty menor a 1 ni mayor al stock
       const newQty = Math.max(1, Math.min(qty, found.stock))
       found.qty = newQty
       set({ cart })
@@ -67,11 +53,6 @@ export const useStore = create(persist(
 
     cartTotal: () => get().cart.reduce((s, p) => s + Number(p.price) * p.qty, 0),
 
-    // -------------------------
-    // Descontar stock en el backend
-    // -------------------------
-    // Esta función intenta actualizar cada producto con el stock resultante.
-    // Requiere que user.token exista. Devuelve { success: boolean, errors: [] }
     decrementStockOnServer: async () => {
       const user = get().user
       const cart = get().cart
@@ -86,7 +67,6 @@ export const useStore = create(persist(
 
       for (const item of cart) {
         try {
-          // calcular nuevo stock
           const newStock = Number(item.stock) - Number(item.qty)
           if (newStock < 0) {
             results.success = false

@@ -43,19 +43,17 @@ const Login = () => {
         return
       }
 
-      // Respuesta del backend: res.user con token "Bearer xxxx"
       const userPayload = {
         id: res.user.id,
         full_name: res.user.full_name || res.user.fullName || res.user.full_name,
         email: res.user.email,
         token: res.user.token,
-        role: res.user.role || 'cliente' // en caso de que backend no lo mande
+        role: res.user.role || 'cliente'
       }
 
       setUser(userPayload)
       toast.success("Sesión iniciada")
 
-      // Si venimos desde el carrito --> ir a checkout
       if (fromCart) {
         navigate('/checkout')
       } else {
