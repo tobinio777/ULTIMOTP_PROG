@@ -102,11 +102,7 @@ export const ProductList = () => {
       )
     }
 
-    return (
-      <Link to="/cart" className="inline-block py-2 px-4 rounded-lg shadow-md font-bold text-sm transition-all text-white bg-linear-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800">
-        + Ir al Carrito
-      </Link>
-    )
+
   }
 
   return (
